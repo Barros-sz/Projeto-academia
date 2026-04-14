@@ -13,61 +13,56 @@ load_dotenv()
 
 app = Flask(__name__)
 
-#versão do openapi
-app.config['SWAGGER'] = {'openapi':'3.0.3'}
-#trazer openapi para o codigo
+# versão do openapi
+app.config['SWAGGER'] = {'openapi': '3.0.3'}
+# trazer openapi para o codigo
 swagger = Swagger(app, template_file='openapi.yaml')
-
 
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
-CORS(app, origins=["--CATRACA NA VERCEL--","--ADMINSTRADOR NA VERCEL--"])
+CORS(app, origins=["--CATRACA NA VERCEL--", "--ADMINSTRADOR NA VERCEL--"])
 ADM_USUARIO = os.getenv("ADM_USUARIO")
 ADM_SENHA = os.getenv("ADM_SENHA")
 
-
 if os.getenv("VERCEL"):
-    #se na vercel
+    # se na vercel
     cred = credentials.Certificate(json.loads(os.getenv("FIREBASE_CREDENTIALS")))
-else:#se local
+else:  # se local
     cred = credentials.Certificate("firebase.json")
     
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-
-
 @app.route("/", methods=['GET'])
 def root():
-    return jsonify({"api": "GymSystem", "version": "1.0", "author": "barros and joão pedro"}), 200
-
+    return jsonify({"api": "GymSystem", "version": "1.0", "author": "barros and joao pedro"}), 200
 
 #######################################__________Rota de login_________########################################
 
 @app.route("/login", methods=["POST"])
 def login():
-    dados =request.get_json()
+    dados = request.get_json()
     if not dados:
-        return jsonify({"error":"envie os dados para login"}), 400
+        return jsonify({"error": "envie os dados para login"}), 400
     
     usuario = dados.get("usuario")
     senha = dados.get("senha")
 
     if not usuario or not senha:
-        return jsonify({"error":"usuario e senha são obrigatórios"}), 400
+        return jsonify({"error": "usuario e senha são obrigatórios"}), 400
     
     if usuario == ADM_USUARIO and senha == ADM_SENHA:
         token = gerar_token(usuario)
-        return jsonify({"message":"login realizado com sucesso", "token":token}), 200
-
+        return jsonify({"message": "login realizado com sucesso", "token": token}), 200
+    
+    return jsonify({"error": "Credenciais inválidas"}), 401
 
 
 ############################################_____ROTAS ABERTAS_____###########################################
 
-
 # rotas basicas - BUSCA GERAL #################################################
-@app.route("/charadas", methods=['GET'])
-def get_charadas():
+@app.route("/clientes", methods=['GET'])
+def get_clientes():
     clientes = []
     lista = db.collection('clientes').stream()
     for item in lista:
@@ -76,39 +71,37 @@ def get_charadas():
 
 
 # rotas basicas - BUSCA POR ID #################################################
-@app.route("/charadas/<int:id>", methods=['GET'])
-def get_charada_by_id(id):
-    docs = db.collection('charadas').where('id', '==', id).limit(1).get()
+@app.route("/clientes/<int:id>", methods=['GET'])
+def get_cliente_by_id(id):
+    docs = db.collection('clientes').where('id', '==', id).limit(1).get()
     
     if not docs:
-        return jsonify({"error": "Charada não encontrada"}), 404
+        return jsonify({"error": "Cliente não encontrado"}), 404
         
     return jsonify(docs[0].to_dict()), 200
 
 
 # rotas basicas - BUSCA ALETÓRIA #################################################
-@app.route("/charadas/random", methods=['GET'])
-def get_charada_random():
-    lista = list(db.collection('charadas').stream())
+@app.route("/clientes/random", methods=['GET'])
+def get_cliente_random():
+    lista = list(db.collection('clientes').stream())
 
     if not lista:
-        return jsonify({"error": "Nenhuma charada encontrada"}), 404
+        return jsonify({"error": "Nenhum cliente encontrado"}), 404
     
-    escolhida = random.choice(lista)
-    return jsonify(escolhida.to_dict()), 200
+    escolhido = random.choice(lista)
+    return jsonify(escolhido.to_dict()), 200
 
 
 ############################################_____ROTAS FECHADAS_____###########################################
   
-
-# adicionar charada - +token #################################################
-@app.route("/charadas", methods=['POST'])
+# adicionar cliente - +token #################################################
+@app.route("/clientes", methods=['POST'])
 @token_obrigatorio
-def post_charadas():
-    
+def post_clientes():
     dados = request.get_json()
-    if not dados or "pergunta" not in dados or "resposta" not in dados:
-        return jsonify({"error": "Dados inválidos ou incompletos"}), 400
+    if not dados or "nome" not in dados or "cpf" not in dados or "autorizado" not in dados:
+        return jsonify({"error": "Dados inválidos ou incompletos. Campos necessários: nome, cpf, autorizado."}), 400
     
     # adicionar
     try:
@@ -118,101 +111,98 @@ def post_charadas():
         # add ID
         novo_id = contador_doc.to_dict()['ultimo_id'] + 1
         contador_ref.update({"ultimo_id": novo_id})
-        # atualizar
-        db.collection('charadas').add({
+        
+        # atualizar banco de clientes
+        db.collection('clientes').add({
             "id": novo_id,
-            "pergunta": dados["pergunta"],
-            "resposta": dados["resposta"]
+            "nome": dados["nome"],
+            "cpf": dados["cpf"],
+            "autorizado": dados["autorizado"]
         })
-        return jsonify({"message": "Criada com sucesso!", "novo_id": novo_id}), 201
+        return jsonify({"message": "Cliente criado com sucesso!", "novo_id": novo_id}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
 
-# alterar charada completa - +token #################################################
-@app.route("/charadas/<int:id>", methods=['PUT'])
+# alterar cliente completo - +token #################################################
+@app.route("/clientes/<int:id>", methods=['PUT'])
 @token_obrigatorio
-
-def charadas_put(id):
-    
+def clientes_put(id):
     # dados
     dados = request.get_json()
-    if not dados or "pergunta" not in dados or "resposta" not in dados:
+    if not dados or "nome" not in dados or "cpf" not in dados or "autorizado" not in dados:
         return jsonify({"error": "Dados inválidos ou incompletos"}), 400
     
     try:
         # busca o documento pelo id
-        query = db.collection("charadas").where("id", "==", id).limit(1).get()
+        query = db.collection("clientes").where("id", "==", id).limit(1).get()
         
         if not query:
-            return jsonify({"error": "Charada não encontrada"}), 404
+            return jsonify({"error": "Cliente não encontrado"}), 404
 
         # atualiza o documento
         for doc in query:
-            doc_ref = db.collection("charadas").document(doc.id)
+            doc_ref = db.collection("clientes").document(doc.id)
             doc_ref.update({
-                "pergunta": dados["pergunta"],
-                "resposta": dados["resposta"]
+                "nome": dados["nome"],
+                "cpf": dados["cpf"],
+                "autorizado": dados["autorizado"]
             })
         
-        return jsonify({
-            "message": "charada atualizada!", "id": id}), 200
+        return jsonify({"message": "Cliente atualizado com sucesso!", "id": id}), 200
     
     except Exception as e:
         return jsonify({"error": f"Erro interno: {str(e)}"}), 500
     
 
-# alterar parte da charada - +token #################################################
-@app.route("/charadas/<int:id>", methods=['PUT'])
+# alterar parte do cliente - +token #################################################
+@app.route("/clientes/<int:id>", methods=['PATCH'])
 @token_obrigatorio
-
-def charadas_patch(id):
-    
+def clientes_patch(id):
     # dados
     dados = request.get_json()
-    if not dados or ("pergunta" not in dados and "resposta" not in dados):
+    if not dados or ("nome" not in dados and "cpf" not in dados and "autorizado" not in dados):
         return jsonify({"error": "Dados inválidos ou incompletos"}), 400
     
-    #redireciona para o put se mudar tudo
-    if "pergunta" in dados and "resposta" in dados:
-        return redirect(url_for('charadas_put', id=id))
-    
-
     try:
         # busca o documento pelo id
-        query = db.collection("charadas").where("id", "==", id).limit(1).get()
+        query = db.collection("clientes").where("id", "==", id).limit(1).get()
         
         if not query:
-            return jsonify({"error": "Charada não encontrada"}), 404
+            return jsonify({"error": "Cliente não encontrado"}), 404
+
+        # Dicionário dinâmico para atualizar apenas o que foi enviado
+        update_data = {}
+        if "nome" in dados:
+            update_data["nome"] = dados["nome"]
+        if "cpf" in dados:
+            update_data["cpf"] = dados["cpf"]
+        if "autorizado" in dados:
+            update_data["autorizado"] = dados["autorizado"]
 
         # atualiza o documento
         for doc in query:
-            doc_ref = db.collection("charadas").document(doc.id)
-            doc_ref.update({
-                "pergunta": dados["pergunta"],
-                "resposta": dados["resposta"]
-            })
+            doc_ref = db.collection("clientes").document(doc.id)
+            doc_ref.update(update_data)
         
-        return jsonify({"message": "charada atualizada!", "id": id}), 200
+        return jsonify({"message": "Cliente atualizado!", "id": id}), 200
     
     except Exception as e:
         return jsonify({"error": f"Erro interno: {str(e)}"}), 500
     
-# apaga a charada - +token #################################################
-@app.route("/charadas/<int:id>", methods=['DELETE'])
+# apaga cliente - +token #################################################
+@app.route("/clientes/<int:id>", methods=['DELETE'])
 @token_obrigatorio
-
-def delete_charada(id):
-    
-    
-    docs = db.collection('charadas').where('id', '==', id).limit(1).get()
+def delete_cliente(id):
+    docs = db.collection('clientes').where('id', '==', id).limit(1).get()
     
     if not docs:
-        return jsonify({"error": "Charada não encontrada"}), 404
+        return jsonify({"error": "Cliente não encontrado"}), 404
         
-    doc_ref = db.collection('charadas').document(docs[0].id)
+    doc_ref = db.collection('clientes').document(docs[0].id)
     doc_ref.delete()
-    return jsonify({"message": "charada apagada!", "id": id}), 200
+    return jsonify({"message": "Cliente apagado!", "id": id}), 200
+
 #################################################################################################################################
 if __name__ == "__main__":
     app.run(debug=True)
