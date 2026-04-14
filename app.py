@@ -20,7 +20,10 @@ swagger = Swagger(app, template_file='openapi.yaml')
 
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
-CORS(app, origins=["https://academia-catraca.vercel.app", "https://secretaria-academia.vercel.app"])
+# No app.py, tente esta configuração mais robusta:
+CORS(app, resources={r"/*": {"origins": ["https://academia-catraca.vercel.app", "https://secretaria-academia.vercel.app"]}})
+
+
 ADM_USUARIO = os.getenv("ADM_USUARIO")
 ADM_SENHA = os.getenv("ADM_SENHA")
 
@@ -78,6 +81,15 @@ def get_cliente_by_id(id):
     if not docs:
         return jsonify({"error": "Cliente não encontrado"}), 404
         
+    return jsonify(docs[0].to_dict()), 200
+
+
+# rotas basicas - BUSCA POR CPF #################################################
+@app.route("/clientes/cpf/<string:cpf>", methods=['GET'])
+def get_cliente_by_cpf(cpf):
+    docs = db.collection('clientes').where('cpf', '==', cpf).limit(1).get()
+    if not docs:
+        return jsonify({"error": "Não encontrado"}), 404
     return jsonify(docs[0].to_dict()), 200
 
 
