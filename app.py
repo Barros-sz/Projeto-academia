@@ -20,7 +20,7 @@ swagger = Swagger(app, template_file='openapi.yaml')
 
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
-CORS(app, origins=["--CATRACA NA VERCEL--", "--ADMINSTRADOR NA VERCEL--"])
+CORS(app, origins=["https://academia-catraca.vercel.app", "https://secretaria-academia.vercel.app"])
 ADM_USUARIO = os.getenv("ADM_USUARIO")
 ADM_SENHA = os.getenv("ADM_SENHA")
 
