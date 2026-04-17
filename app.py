@@ -108,6 +108,16 @@ def post_clientes():
         }), 400
 
     try:
+        # VERIFICAÇÃO 
+        cpf_existente = db.collection("clientes").where("cpf", "==", dados["cpf"]).limit(1).get()
+        if cpf_existente:
+            return jsonify({"error": "Já existe um cliente cadastrado com este CPF."}), 409
+
+        nome_existente = db.collection("clientes").where("nome", "==", dados["nome"]).limit(1).get()
+        if nome_existente:
+            return jsonify({"error": "Já existe um cliente cadastrado com este nome."}), 409
+       
+
         contador_ref = db.collection("contador").document("controle_id")
         contador_doc = contador_ref.get()
 
@@ -131,7 +141,6 @@ def post_clientes():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/clientes/<int:id>", methods=["PUT"])
 @token_obrigatorio
