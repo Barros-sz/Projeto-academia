@@ -62,4 +62,4 @@ Com o servidor rodando, acesse a documentação interativa em:
 
 ---
 
-**Desenvolvido por:** Barros e João Pedro.
+**Desenvolvido por:** Felipe Barros e João Pedro Stadler.
