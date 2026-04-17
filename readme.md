@@ -61,5 +61,7 @@ Com o servidor rodando, acesse a documentação interativa em:
 `http://localhost:5000/apidocs`
 
 ---
+## USE O ACESSO DA API PELA VERCEL:
+https://projeto-academia-hazel.vercel.app/
 
 **Desenvolvido por:** Felipe Barros e João Pedro Stadler.
